@@ -1,7 +1,9 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.CommentDTO;
 import com.example.demo.entity.Comment;
 import com.example.demo.entity.Post;
+import com.example.demo.entity.PostStatus;
 import com.example.demo.entity.User;
 import com.example.demo.repository.CommentRepository;
 import com.example.demo.repository.PostRepository;
@@ -20,6 +22,10 @@ public class CommentService {
     private UserRepository userRepository;
     @Autowired
     private PostRepository postRepository;
+    @Autowired
+    private PostService postService;
+    @Autowired
+    private UserService userService;
 
     public List<Comment> retrieveComments() {
         return (List<Comment>) this.commentRepository.findAll();
@@ -34,75 +40,71 @@ public class CommentService {
     }
 
     public List<Comment> retrieveCommentsByPostId(Long postId) {
-        return this.commentRepository.findByPostPostId(postId);
+        return this.commentRepository.findByPostPostIdOrderByVoteCountDesc(postId);
     }
 
-    public Comment insertComment(Comment comment) {
-        if (comment.getAuthor() == null || comment.getAuthor().getUserId() == null)
-            throw new RuntimeException("Author is required!");
-        if (comment.getPost() == null || comment.getPost().getPostId() == null)
-            throw new RuntimeException("Post is required!");
+    public Comment insertComment(CommentDTO dto) {
+        Post post = postService.retrievePostById(dto.getPostId());
 
-        Optional<User> authorOptional = userRepository.findById(comment.getAuthor().getUserId());
-        if (authorOptional.isPresent()) {
-            comment.setAuthor(authorOptional.get());
-        } else {
-            throw new RuntimeException("User not found!");
+        if(post.getPostStatus() == PostStatus.OUTDATED) {
+            throw new IllegalArgumentException("Can't comment on an outdated post!");
         }
 
-        Optional<Post> postOptional = postRepository.findById(comment.getPost().getPostId());
-        if (postOptional.isPresent()) {
-            comment.setPost(postOptional.get());
-        } else {
-            throw new RuntimeException("Post not found!");
+        User author = userService.findEntityById(dto.getAuthorId());
+        if(author.getIsBanned()) {
+            throw new IllegalArgumentException("Banned users can't do this!");
         }
 
-        return this.commentRepository.save(comment);
+        Comment comment = new Comment();
+        comment.setText(dto.getText());
+        comment.setImageUrl(dto.getImageUrl());
+        comment.setAuthor(author);
+        comment.setPost(post);
+        comment.setVoteCount(0);
+
+        Comment saved = commentRepository.save(comment);
+
+        postService.updateStatusToFirstReactions(post.getPostId());
+
+        return saved;
     }
 
-    public Comment updateComment(Comment comment) {
-        if (comment.getCommentId() != null) {
-            Optional<Comment> existingOptional = commentRepository.findById(comment.getCommentId());
-            if (existingOptional.isPresent()) {
-                Comment existing = existingOptional.get();
-                comment.setCreationDate(existing.getCreationDate());
-            }
+    public Comment updateComment(Long commentId, CommentDTO dto, Long requestingUserId) {
+        Comment existing = retrieveCommentById(commentId);
+        User requester = userService.findEntityById(requestingUserId);
+
+        if(requester.getIsBanned()) {
+            throw new IllegalArgumentException("Banned users can't do this!");
         }
 
-        if (comment.getAuthor() != null && comment.getAuthor().getUserId() != null) {
-            Optional<User> authorOptional = userRepository.findById(comment.getAuthor().getUserId());
-            if (authorOptional.isPresent()) {
-                comment.setAuthor(authorOptional.get());
-            } else {
-                throw new RuntimeException("User not found!");
-            }
+        if(!existing.getAuthor().getUserId().equals(requestingUserId) && !requester.getIsModerator()) {
+            throw new IllegalArgumentException("Only the author or a moderator can edit this comment");
         }
 
-        if (comment.getPost() != null && comment.getPost().getPostId() != null) {
-            Optional<Post> postOptional = postRepository.findById(comment.getPost().getPostId());
-            if (postOptional.isPresent()) {
-                comment.setPost(postOptional.get());
-            } else {
-                throw new RuntimeException("Post not found!");
-            }
-        }
+        if(dto.getText() != null)
+            existing.setText(dto.getText());
+        if(dto.getImageUrl() != null)
+            existing.setImageUrl(dto.getImageUrl());
 
-        return this.commentRepository.save(comment);
+        return commentRepository.save(existing);
     }
 
 
-    public String deleteById(Long commentId) {
-        if (!commentRepository.existsById(commentId)) {
-            return "Comment doesn't exist";
+    public void deleteById(Long commentId, Long requestingUserId) {
+        Comment comment = retrieveCommentById(commentId);
+        User requester = userService.findEntityById(requestingUserId);
+
+        if(!comment.getAuthor().getUserId().equals(requestingUserId) && !requester.getIsModerator()) {
+            throw new IllegalArgumentException("Only the author or a moderator can delete this comment!");
         }
 
-        try {
-            this.commentRepository.deleteById(commentId);
-        }
-        catch(Exception e) {
-            return "Failed deleting comment " + commentId;
-        }
-        return "Comment deletion successful";
+        commentRepository.deleteById(commentId);
+    }
+
+    public void updateVoteCount(Long commentId, int newCount) {
+        Comment comment = retrieveCommentById(commentId);
+        comment.setVoteCount(newCount);
+        commentRepository.save(comment);
     }
 
 

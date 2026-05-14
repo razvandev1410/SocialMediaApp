@@ -40,4 +40,30 @@ public class User {
     @OneToMany(mappedBy = "author", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Comment> comments;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<Vote> votes;
+
+    @Column(name = "is_banned", nullable = false, columnDefinition = "boolean default false")
+    private boolean isBanned = false;
+
+    @Column(name = "is_moderator", nullable = false, columnDefinition = "boolean default false")
+    private boolean isModerator = false;
+
+    public boolean getIsBanned() {
+        return this.isBanned;
+    }
+
+    public void setIsBanned(boolean isBanned) {
+        this.isBanned = isBanned;
+    }
+
+    public boolean getIsModerator() {
+        return this.isModerator;
+    }
+
+    public void setIsModerator(boolean isModerator) {
+        this.isModerator = isModerator;
+    }
 }

@@ -1,3 +1,6 @@
+//DEPRECATED AFTER ASSIGNMENT 1
+/*
+
 package com.example.demo;
 
 import org.junit.jupiter.api.Test;
@@ -11,3 +14,6 @@ class DemoApplicationTests {
     }
 
 }
+
+ */
+

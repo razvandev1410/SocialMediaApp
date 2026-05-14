@@ -1,52 +1,57 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.CommentDTO;
 import com.example.demo.entity.Comment;
 import com.example.demo.service.CommentService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/comments")
+@CrossOrigin(origins = "*")
 public class CommentController {
-
     @Autowired
     private CommentService commentService;
 
-    @GetMapping("/getAll")
-    @ResponseBody
+    @GetMapping
     public List<Comment> retrieveAllComments() {
         return this.commentService.retrieveComments();
     }
 
-    @GetMapping("/getById")
-    @ResponseBody
-    public Comment getCommentById(@RequestParam("id") Long id) {
+    @GetMapping("/{id}")
+    public Comment getCommentById(@PathVariable("id") Long id) {
         return this.commentService.retrieveCommentById(id);
     }
 
-    @GetMapping("/getByPostId")
-    @ResponseBody
-    public List<Comment> getCommentsByPostId(@RequestParam("postId") Long postId) {
+    @GetMapping("/post/{postId}")
+    public List<Comment> getCommentsByPostId(@PathVariable Long postId) {
         return this.commentService.retrieveCommentsByPostId(postId);
     }
 
-    @PostMapping("/insertComment")
-    @ResponseBody
-    public Comment insertComment(@RequestBody Comment comment) {
-        return this.commentService.insertComment(comment);
+    @PostMapping
+    public ResponseEntity<Comment> insertComment(@Valid @RequestBody CommentDTO dto) {
+        Comment comment = commentService.insertComment(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(comment);
     }
 
-    @PutMapping("/updateComment")
+    @PutMapping("/{id}")
     @ResponseBody
-    public Comment updateComment(@RequestBody Comment comment) {
-        return this.commentService.updateComment(comment);
+    public Comment updateComment(@PathVariable("id") Long commentId,
+                                 @Valid @RequestBody CommentDTO dto,
+                                 @RequestParam Long requestingUserId) {
+        return this.commentService.updateComment(commentId, dto, requestingUserId);
     }
 
-    @DeleteMapping("/deleteById")
+    @DeleteMapping("/{id}")
     @ResponseBody
-    public String deleteByCommentId(@RequestParam Long id) {
-        return this.commentService.deleteById(id);
+    public ResponseEntity<Void> deleteByCommentId(@PathVariable("id") Long id,
+                                                  @RequestParam Long requestingUserId) {
+        commentService.deleteById(id, requestingUserId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }

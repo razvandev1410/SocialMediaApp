@@ -1,0 +1,29 @@
+services:
+  frontend:
+    build: 
+      context: ./SocialMediaAppFrontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend-service
+
+  backend-service:
+    build: 
+      context: ./SocialMediaAppBackend/demo
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploads_data:/app/uploads
+      - ./SocialMediaAppBackend/demo/uploads:/app/uploads
+    env_file:
+      - .env
+    depends_on:
+      - notification-service
+
+  notification-service:
+    build: 
+      context: ./NotificationMicroservice/NotificationMicroservice
+    ports:
+      - "8082:8082"
+    env_file:
+      - .env

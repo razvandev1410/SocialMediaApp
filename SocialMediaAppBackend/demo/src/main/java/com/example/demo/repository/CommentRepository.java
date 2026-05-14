@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface CommentRepository extends CrudRepository<Comment, Long> {
     List<Comment> findByPostPostId(Long postId);
+    List<Comment> findByPostPostIdOrderByVoteCountDesc(Long postId);
 }
